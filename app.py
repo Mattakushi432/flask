@@ -39,8 +39,8 @@ def get_all_spend():
     return 'Hello World!'
 
 @app.route('/spend/spend_id', methods=['GET', 'PATCH', 'DELETE'])
-def get_spend(category_id):
-    return f'Hello World!, {category_id}'
+def get_spend(spend_id):
+    return f'Hello World!, {spend_id}'
 
 
 if __name__ == '__main__':
