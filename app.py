@@ -31,8 +31,8 @@ def get_category(category_id):
 def get_all_income():
     return 'Hello World!'
 @app.route('/income/income_id', methods=['GET', 'PATCH', 'DELETE'])
-def get_income(category_id):
-    return f'Hello World!, {category_id}'
+def get_income(income_id):
+    return f'Hello World!, {income_id}'
 
 @app.route('/spend', methods=['GET', 'POST'])
 def get_all_spend():
