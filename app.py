@@ -1,46 +1,76 @@
 from flask import Flask, request, render_template
+
 app = Flask(__name__)
 
 
 @app.route('/user', methods=['GET', 'POST'])
 def get_user():
+    if request.method == 'POST':
+        return 'POST'
     return 'Hello World!'
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
+    if request.method == 'POST':
+        return 'POST'
     return render_template('login.html')
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register_page():
+    if request.method == 'POST':
+        return 'POST'
     return render_template('register.html')
+
 
 @app.route('/category', methods=['GET', 'POST'])
 def get_all_category():
+    if request.method == 'POST':
+        return 'POST'
     return 'Hello World!'
 
-@app.route('/category/category_id', methods=['GET', 'PATCH', 'DELETE'])
+
+@app.route('/category/<int:category_id>', methods=['GET', 'PATCH', 'DELETE'])
 def get_category(category_id):
     if request.method == 'GET':
-        return f'Hello World!, {category_id}'
+        return f'Category: {category_id}'
     elif request.method == 'PATCH':
-        return 'PATCH'
+        return f'Update category: {category_id}'
     else:
-        return 'DELETE'
+        return f'Delete category: {category_id}'
 
 @app.route('/income', methods=['GET', 'POST'])
 def get_all_income():
+    if request.method == 'POST':
+        return 'POST'
     return 'Hello World!'
-@app.route('/income/income_id', methods=['GET', 'PATCH', 'DELETE'])
+
+
+@app.route('/income/<int:income_id>', methods=['GET', 'PATCH', 'DELETE'])
 def get_income(income_id):
-    return f'Hello World!, {income_id}'
+    if request.method == 'GET':
+        return f'Income: {income_id}'
+    elif request.method == 'PATCH':
+        return f'Update income: {income_id}'
+    else:
+        return f'Delete income: {income_id}'
+
 
 @app.route('/spend', methods=['GET', 'POST'])
 def get_all_spend():
+    if request.method == 'POST':
+        return 'POST'
     return 'Hello World!'
 
-@app.route('/spend/spend_id', methods=['GET', 'PATCH', 'DELETE'])
+
+@app.route('/spend/<int:spend_id>', methods=['GET', 'PATCH', 'DELETE'])
 def get_spend(spend_id):
-    return f'Hello World!, {spend_id}'
+    if request.method == 'GET':
+        return f'Spend: {spend_id}'
+    elif request.method == 'PATCH':
+        return f'Update spend: {spend_id}'
+    else:
+        return f'Delete spend: {spend_id}'
 
 
 if __name__ == '__main__':
