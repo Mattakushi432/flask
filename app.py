@@ -1,7 +1,20 @@
 from flask import Flask, request, render_template
+import sqlite3
 
 app = Flask(__name__)
 
+class sql_tracker:
+    def __init__(self, db_tracker):
+        self.db_tracker = db_tracker
+
+    def __enter__(self):
+        self.conn = sqlite3.connect(self.db_tracker)
+        self.cursor = self.conn.cursor()
+        return self.cursor
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        self.conn.commit()
+        self.conn.close()
 
 @app.route('/user', methods=['GET', 'POST'])
 def get_user():
