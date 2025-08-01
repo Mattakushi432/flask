@@ -53,7 +53,7 @@ def register_page():
         with sql_tracker('db_tracker.db') as cursor:
             cursor.execute(
                 f"INSERT INTO user (name, surname, password, email) VALUES ('{name}', '{surname}', '{password}', '{email}')")
-        return "Вривайся до 3-ї штурмової бригади!"
+        return "Hello world"
 
 
 @app.route('/category', methods=['GET', 'POST'])
