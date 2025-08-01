@@ -28,8 +28,17 @@ def get_user():
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
     if request.method == 'POST':
-        return 'POST'
-    return render_template('login.html')
+        return render_template('login.html')
+    else:
+        email = request.form['email']
+        password = request.form['password']
+        with sql_tracker('db_tracker.db') as cursor:
+            result = cursor.execute(f"SELECT * FROM user WHERE email = '{email}' and password = '{password}'")
+            data = result.fetchone()
+        if data:
+            return f"correct user pair"
+        else:
+            return f"wrong user pair"
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -37,7 +46,15 @@ def register_page():
     if request.method == 'POST':
         return render_template('register.html')
     else:
-        return 'Hello World!'
+        name = request.form['name']
+        surname = request.form['surname']
+        password = request.form['password']
+        email = request.form['email']
+        with sql_tracker('db_tracker.db') as cursor:
+            cursor.execute(
+                f"INSERT INTO user (name, surname, password, email) VALUES ('{name}', '{surname}', '{password}', '{email}')")
+        return "Вривайся до 3-ї штурмової бригади!"
+
 
 @app.route('/category', methods=['GET', 'POST'])
 def get_all_category():
