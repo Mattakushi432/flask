@@ -3,6 +3,7 @@ import sqlite3
 
 app = Flask(__name__)
 
+
 class sql_tracker:
     def __init__(self, db_tracker):
         self.db_tracker = db_tracker
@@ -16,11 +17,13 @@ class sql_tracker:
         self.conn.commit()
         self.conn.close()
 
+
 @app.route('/user', methods=['GET', 'POST'])
 def get_user():
     if request.method == 'POST':
         return 'POST'
     return 'Hello World!'
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
@@ -32,9 +35,9 @@ def login_page():
 @app.route('/register', methods=['GET', 'POST'])
 def register_page():
     if request.method == 'POST':
-        return 'POST'
-    return render_template('register.html')
-
+        return render_template('register.html')
+    else:
+        return 'Hello World!'
 
 @app.route('/category', methods=['GET', 'POST'])
 def get_all_category():
@@ -51,6 +54,7 @@ def get_category(category_id):
         return f'Update category: {category_id}'
     else:
         return f'Delete category: {category_id}'
+
 
 @app.route('/income', methods=['GET', 'POST'])
 def get_all_income():
