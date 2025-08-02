@@ -1,3 +1,4 @@
+import cursor
 from flask import Flask, request, render_template
 import sqlite3
 
@@ -51,9 +52,14 @@ def register_page():
         password = request.form['password']
         email = request.form['email']
         with sql_tracker('db_tracker') as cursor:
-            cursor.execute(
-                f"INSERT INTO user (name, surname, password, email) VALUES ('{name}', '{surname}', '{password}', '{email}')")
-        return f"Registered!!!"
+            cursor.execute(f"SELECT * FROM user WHERE email = '{email}'")
+            data = cursor.fetchone()
+            if data:
+                return f"User already exists"
+            else:
+                cursor.execute(f"INSERT INTO user (name, surname, password, email) VALUES ('{name}', '{surname}', '{password}', '{email}')")
+                return f"Registration successful!"
+
 
 
 @app.route('/category', methods=['GET', 'POST'])
