@@ -27,12 +27,12 @@ def get_user():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
-    if request.method == 'POST':
+    if request.method == 'GET':
         return render_template('login.html')
     else:
         email = request.form['email']
         password = request.form['password']
-        with sql_tracker('db_tracker.db') as cursor:
+        with sql_tracker('db_tracker') as cursor:
             result = cursor.execute(f"SELECT * FROM user WHERE email = '{email}' and password = '{password}'")
             data = result.fetchone()
         if data:
@@ -43,17 +43,17 @@ def login_page():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register_page():
-    if request.method == 'POST':
+    if request.method == 'GET':
         return render_template('register.html')
     else:
         name = request.form['name']
         surname = request.form['surname']
         password = request.form['password']
         email = request.form['email']
-        with sql_tracker('db_tracker.db') as cursor:
+        with sql_tracker('db_tracker') as cursor:
             cursor.execute(
                 f"INSERT INTO user (name, surname, password, email) VALUES ('{name}', '{surname}', '{password}', '{email}')")
-        return "Hello world"
+        return f"Registered!!!"
 
 
 @app.route('/category', methods=['GET', 'POST'])
