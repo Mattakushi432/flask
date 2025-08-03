@@ -56,9 +56,9 @@ def register_page():
             if data:
                 return f"User already exists"
             else:
-                cursor.execute(f"INSERT INTO user (name, surname, password, email) VALUES ('{name}', '{surname}', '{password}', '{email}')")
+                cursor.execute(
+                    f"INSERT INTO user (name, surname, password, email) VALUES ('{name}', '{surname}', '{password}', '{email}')")
                 return f"Registration successful!"
-
 
 
 @app.route('/category', methods=['GET', 'POST'])
