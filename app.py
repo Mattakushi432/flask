@@ -161,7 +161,9 @@ def get_all_spend():
                 transaction_type = request.form['transaction_type']
                 cursor.execute(
                     f"INSERT INTO paypal (description, category, transaction_date, transaction_type, owner) VALUES ('{description}', '{category}', '{transaction_date}', '{transaction_type}', '{owner}', '{SPEND}')")
-            return redirect('/login')
+            return redirect('/spend')
+    else:
+        return redirect('/login')
 
 
 @app.route('/spend/<int:spend_id>', methods=['GET', 'PATCH', 'DELETE'])
