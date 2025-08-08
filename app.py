@@ -20,12 +20,57 @@ class sql_tracker:
 
     def __enter__(self):
         self.conn = sqlite3.connect(self.db_tracker)
+        self.conn.row_factory = sqlite3.Row
         self.cursor = self.conn.cursor()
         return self.cursor
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.conn.commit()
         self.conn.close()
+
+
+class DataBaseManager:
+    def _execute(self, query, params=(), fetchone=False, fetchall=False):
+        with sql_tracker('db_tracker') as cursor:
+            cursor.execute(query, params)
+            if fetchone:
+                return cursor.fetchone()
+            elif fetchall:
+                return cursor.fetchall()
+
+    def insert(self, table, data):
+        keys = ', '.join(data.keys())
+        values = ', '.join(['?'] * len(data))
+        query = f"INSERT INTO {table} ({keys}) VALUES ({values})"
+        try:
+            self._execute(query, tuple(data.values()))
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def select(self, table, params=None, fetchone=False, fetchall=False):
+        query = f"SELECT * FROM {table}"
+        values = []
+        if params:
+            result_con = []
+            for key, value in params.items():
+                result_con.append(f"{key} = ?")
+                values.append(value)
+            query += f" WHERE {' AND '.join(result_con)}"
+        return self._execute(query, values, fetchone=fetchone, fetchall=fetchall)
+
+    def update(self, table, data, where_params):
+        set_clause = ', '.join([f"{key} = ?" for key in data.keys()])
+        where_clause = ' AND '.join([f"{key} = ?" for key in where_params.keys()])
+        query = f"UPDATE {table} SET {set_clause} WHERE {where_clause}"
+        params = tuple(data.values()) + tuple(where_params.values())
+        self._execute(query, params)
+
+    def delete(self, table, where_params):
+        where_clause = ' AND '.join([f"{key} = ?" for key in where_params.keys()])
+        query = f"DELETE FROM {table} WHERE {where_clause}"
+        params = tuple(where_params.values())
+        self._execute(query, params)
 
 
 def login_required(func):
@@ -37,6 +82,9 @@ def login_required(func):
             return func(*args, **kwargs)
 
     return check_login
+
+
+db = DataBaseManager()
 
 
 @app.route('/user', methods=['GET', 'POST'])
@@ -51,21 +99,18 @@ def login_page():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
-        with sql_tracker('db_tracker') as cursor:
-            result = cursor.execute(f"SELECT * FROM user WHERE email = '{email}' and password = '{password}'")
-            data = result.fetchone()
+        data = db.select('user', {'email': email, 'password': password}, fetchall=True)
         if data:
-            session['user'] = data[0]
+            session['user'] = dict(data[0])
             return redirect('/income')
         return render_template('login.html', error='Invalid email or password')
-    else:
-        return render_template('login.html')
+    return render_template('login.html')
 
 
 @app.route('/logout')
 def logout():
     session.pop('user', None)
-    return 'You are logged out'
+    return redirect('/login')
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -77,58 +122,68 @@ def register_page():
         surname = request.form['surname']
         password = request.form['password']
         email = request.form['email']
-        with sql_tracker('db_tracker') as cursor:
-            cursor.execute(f"SELECT * FROM user WHERE email = '{email}'")
-            data = cursor.fetchone()
-            if data:
-                return f"User already exists"
-            else:
-                cursor.execute(
-                    f"INSERT INTO user (name, surname, password, email) VALUES ('{name}', '{surname}', '{password}', '{email}')")
-                return f"Registration successful!"
+        success = db.insert('user', {'name': name, 'surname': surname, 'password': password, 'email': email})
+        if success:
+            return redirect('/login')
+        else:
+            return render_template('register.html', error='Email already exists')
 
 
 @app.route('/category', methods=['GET', 'POST'])
 @login_required
-def get_all_category():
+def category_page():
+    user_id = session['user']['id']
     if request.method == 'POST':
-        return 'POST'
-    return 'Hello World!'
+        category_name = request.form['name']
+        if category_name:
+            db.insert('category', {'name': category_name, 'owner': user_id})
+        return redirect('/category')
+    user_category = db.select('category', {'owner': user_id}, fetchall=True)
+    return render_template('category_list.html', category=user_category)
 
 
-@app.route('/category/<int:category_id>', methods=['GET', 'PATCH', 'DELETE'])
+@app.route('/category/<int:category_id>/edit', methods=['GET', 'POST'])
 @login_required
 def get_category(category_id):
-    if request.method == 'GET':
-        return f'Category: {category_id}'
-    elif request.method == 'PATCH':
-        return f'Update category: {category_id}'
-    else:
-        return f'Delete category: {category_id}'
+    user_id = session['user']['id']
+    category = db.select('category', {'id': category_id, 'owner': user_id}, fetchone=True)
+    if not category:
+        return redirect('/category')
+    if request.method == 'POST':
+        new_name = request.form['name']
+        if new_name:
+            db.update('category', {'name': new_name}, {'id': category_id, 'owner': user_id})
+        return redirect('/category')
+    return render_template('edit_category.html', category=category)
+
+
+@app.route('/category/<int:category_id>/delete', methods=['GET'])
+@login_required
+def delete_category(category_id):
+    user_id = session['user']['id']
+    db.delete('category', {'id': category_id, 'owner': user_id})
+    return redirect('/category')
 
 
 @app.route('/income', methods=['GET', 'POST'])
 @login_required
 def get_all_income():
-    if 'user' in session:
-        if request.method == 'GET':
-            with sql_tracker('db_tracker') as cursor:
-                result = cursor.execute(
-                    f"SELECT * FROM paypal WHERE owner = {session['user']} and transaction_type = {INCOME}")
-                data = result.fetchall()
-            return render_template('income.html', paypal=data)
-        else:
-            with sql_tracker('db_tracker') as cursor:
-                description = request.form['description']
-                category = request.form['category']
-                transaction_date = request.form['transaction_date']
-                owner = session['user']
-                transaction_type = request.form['transaction_type']
-                cursor.execute(
-                    f"INSERT INTO paypal (description, category, transaction_date, transaction_type, owner) VALUES ('{description}', '{category}', '{transaction_date}', '{transaction_type}', '{owner}', '{INCOME}')")
-            return redirect('/income')
-    else:
-        return redirect('/login')
+    user_id = session['user']['id']
+    if request.method == 'POST':
+        transaction_data = {
+            'description': request.form.get('description'),
+            'amount': request.form.get('amount'),
+            'category': request.form.get('category'),
+            'transaction_date': request.form.get('transaction_date'),
+            'transaction_type': INCOME,
+            'owner': user_id
+        }
+        db.insert('paypal', transaction_data)
+        return redirect('/income')
+
+    income_data = db.select('paypal', {'owner': user_id, 'transaction_type': INCOME}, fetchall=True)
+    category_data = db.select('category', {'owner': user_id}, fetchall=True)
+    return render_template('income.html', paypal=income_data, category=category_data)
 
 
 @app.route('/income/<int:income_id>', methods=['GET', 'PATCH', 'DELETE'])
@@ -145,25 +200,21 @@ def get_income(income_id):
 @app.route('/spend', methods=['GET', 'POST'])
 @login_required
 def get_all_spend():
-    if 'user' in session:
-        if request.method == 'GET':
-            with sql_tracker('db_tracker') as cursor:
-                result = cursor.execute(
-                    f"SELECT * FROM paypal WHERE owner = {session['user']} and transaction_type = {SPEND}")
-                data = result.fetchall()
-            return render_template('spend.html', paypal=data)
-        else:
-            with sql_tracker('db_tracker') as cursor:
-                description = request.form['description']
-                category = request.form['category']
-                transaction_date = request.form['transaction_date']
-                owner = session['user']
-                transaction_type = request.form['transaction_type']
-                cursor.execute(
-                    f"INSERT INTO paypal (description, category, transaction_date, transaction_type, owner) VALUES ('{description}', '{category}', '{transaction_date}', '{transaction_type}', '{owner}', '{SPEND}')")
-            return redirect('/spend')
-    else:
-        return redirect('/login')
+    user_id = session['user']['id']
+    if request.method == 'POST':
+        transaction_data = {
+            'description': request.form['description'],
+            'amount': request.form['amount'],
+            'category': request.form['category'],
+            'transaction_date': request.form['transaction_date'],
+            'transaction_type': SPEND,
+            'owner': user_id
+        }
+        db.insert('paypal', transaction_data)
+        return redirect('/spend')
+    spend_data = db.select('paypal', {'owner': user_id, 'transaction_type': SPEND}, fetchall=True)
+    category_data = db.select('category', {'owner': user_id}, fetchall=True)
+    return render_template('spend.html', paypal=spend_data, category=category_data)
 
 
 @app.route('/spend/<int:spend_id>', methods=['GET', 'PATCH', 'DELETE'])

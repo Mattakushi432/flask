@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit category</title>
+</head>
+<body>
+    <h1>Edit category: {{ category.name }}</h1>
+    <form action="{{ url_for('edit_category', category_id=category.id) }}" method="post">
+        <input type="text" name="name" value="{{ category.name }}" required>
+        <button type="submit">Save</button>
+    </form>
+    <br>
+    <a href="{{ url_for('categories_page') }}">Cancel</a>
+</body>
+</html>

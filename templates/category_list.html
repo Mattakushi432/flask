@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Main Category</title>
+</head>
+<body>
+    <h1>Category management</h1>
+
+    <h2>Add a new category</h2>
+    <form action="{{ url_for('category_page') }}" method="post">
+        <input type="text" name="name" placeholder="Category Name" required>
+        <button type="submit">Add</button>
+    </form>
+
+    <hr>
+
+    <h2>List of your categories</h2>
+    <ul>
+        {% for category in categories %}
+        <li>
+            {{ category.name }}
+            <a href="{{ url_for('edit_category', category_id=category.id) }}">Edit</a>
+            <form action="{{ url_for('delete_category', category_id=category.id) }}" method="post" style="display:inline;">
+                <button type="submit" onclick="return confirm('Are you sure?');">Delete</button>
+            </form>
+        </li>
+        {% else %}
+        <li>You do not have any categories yet.</li>
+        {% endfor %}
+    </ul>
+    <br>
+    <a href="{{ url_for('get_all_income') }}">Income</a><br>
+    <a href="{{ url_for('get_all_spend') }}">Spend</a>
+</body>
+</html>
