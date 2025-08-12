@@ -2,7 +2,10 @@ from flask import Flask, request, render_template, session, redirect
 from functools import wraps
 import os
 import dotenv
-import sqlite3
+from sqlalchemy.exc import IntegrityError
+
+from sql_engine import Session
+from models import User, Category, Transaction
 
 app = Flask(__name__)
 dotenv.load_dotenv('.env')
@@ -10,67 +13,12 @@ app.secret_key = os.environ.get('secret_key')
 if not app.secret_key:
     raise ValueError("Secret key is not set in the environment variables.")
 
+db_session = Session()
+if not db_session:
+    raise ValueError("Database session could not be created. Check your database connection.")
+
 INCOME = 1
 SPEND = 2
-
-
-class sql_tracker:
-    def __init__(self, db_tracker):
-        self.db_tracker = db_tracker
-
-    def __enter__(self):
-        self.conn = sqlite3.connect(self.db_tracker)
-        self.conn.row_factory = sqlite3.Row
-        self.cursor = self.conn.cursor()
-        return self.cursor
-
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        self.conn.commit()
-        self.conn.close()
-
-
-class DataBaseManager:
-    def _execute(self, query, params=(), fetchone=False, fetchall=False):
-        with sql_tracker('db_tracker') as cursor:
-            cursor.execute(query, params)
-            if fetchone:
-                return cursor.fetchone()
-            elif fetchall:
-                return cursor.fetchall()
-
-    def insert(self, table, data):
-        keys = ', '.join(data.keys())
-        values = ', '.join(['?'] * len(data))
-        query = f"INSERT INTO {table} ({keys}) VALUES ({values})"
-        try:
-            self._execute(query, tuple(data.values()))
-            return True
-        except sqlite3.IntegrityError:
-            return False
-
-    def select(self, table, params=None, fetchone=False, fetchall=False):
-        query = f"SELECT * FROM {table}"
-        values = []
-        if params:
-            result_con = []
-            for key, value in params.items():
-                result_con.append(f"{key} = ?")
-                values.append(value)
-            query += f" WHERE {' AND '.join(result_con)}"
-        return self._execute(query, values, fetchone=fetchone, fetchall=fetchall)
-
-    def update(self, table, data, where_params):
-        set_clause = ', '.join([f"{key} = ?" for key in data.keys()])
-        where_clause = ' AND '.join([f"{key} = ?" for key in where_params.keys()])
-        query = f"UPDATE {table} SET {set_clause} WHERE {where_clause}"
-        params = tuple(data.values()) + tuple(where_params.values())
-        self._execute(query, params)
-
-    def delete(self, table, where_params):
-        where_clause = ' AND '.join([f"{key} = ?" for key in where_params.keys()])
-        query = f"DELETE FROM {table} WHERE {where_clause}"
-        params = tuple(where_params.values())
-        self._execute(query, params)
 
 
 def login_required(func):
@@ -82,9 +30,6 @@ def login_required(func):
             return func(*args, **kwargs)
 
     return check_login
-
-
-db = DataBaseManager()
 
 
 @app.route('/user', methods=['GET', 'POST'])
@@ -99,9 +44,9 @@ def login_page():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
-        data = db.select('user', {'email': email, 'password': password}, fetchall=True)
-        if data:
-            session['user'] = dict(data[0])
+        user = db_session.query(User).filter_by(email=email).first()
+        if user and user.check_password(password):
+            session['user'] = {'id': user.id, 'name': user.name, 'surname': user.surname, 'email': user.email}
             return redirect('/income')
         return render_template('login.html', error='Invalid email or password')
     return render_template('login.html')
@@ -115,18 +60,21 @@ def logout():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register_page():
-    if request.method == 'GET':
-        return render_template('register.html')
-    else:
-        name = request.form['name']
-        surname = request.form['surname']
-        password = request.form['password']
-        email = request.form['email']
-        success = db.insert('user', {'name': name, 'surname': surname, 'password': password, 'email': email})
-        if success:
+    if request.method == 'POST':
+        try:
+            new_user = User(
+                name=request.form['name'],
+                surname=request.form['surname'],
+                email=request.form['email'],
+            )
+            new_user.set_password(request.form['password'])
+            db_session.add(new_user)
+            db_session.commit()
             return redirect('/login')
-        else:
+        except IntegrityError:
+            db_session.rollback()
             return render_template('register.html', error='Email already exists')
+    return render_template('register.html')
 
 
 @app.route('/category', methods=['GET', 'POST'])
@@ -136,23 +84,25 @@ def category_page():
     if request.method == 'POST':
         category_name = request.form['name']
         if category_name:
-            db.insert('category', {'name': category_name, 'owner': user_id})
-        return redirect('/category')
-    user_category = db.select('category', {'owner': user_id}, fetchall=True)
-    return render_template('category_list.html', category=user_category)
+            new_category = Category(name=category_name, owner=user_id)
+            db_session.add(new_category)
+            db_session.commit()
+        return redirect('/income')
+    user_categories = db_session.query(Category).filter_by(owner=user_id).all()
+    return render_template('category_list.html', categories=user_categories)
 
 
 @app.route('/category/<int:category_id>/edit', methods=['GET', 'POST'])
 @login_required
 def get_category(category_id):
-    user_id = session['user']['id']
-    category = db.select('category', {'id': category_id, 'owner': user_id}, fetchone=True)
+    category = db_session.query(Category).filter_by(id=category_id, owner=session['user']['id']).first()
     if not category:
         return redirect('/category')
     if request.method == 'POST':
         new_name = request.form['name']
         if new_name:
-            db.update('category', {'name': new_name}, {'id': category_id, 'owner': user_id})
+            category.name = new_name
+            db_session.commit()
         return redirect('/category')
     return render_template('edit_category.html', category=category)
 
@@ -160,8 +110,10 @@ def get_category(category_id):
 @app.route('/category/<int:category_id>/delete', methods=['GET'])
 @login_required
 def delete_category(category_id):
-    user_id = session['user']['id']
-    db.delete('category', {'id': category_id, 'owner': user_id})
+    category = db_session.query(Category).filter_by(id=category_id, owner=session['user']['id']).first()
+    if category:
+        db_session.delete(category)
+        db_session.commit()
     return redirect('/category')
 
 
@@ -170,19 +122,19 @@ def delete_category(category_id):
 def get_all_income():
     user_id = session['user']['id']
     if request.method == 'POST':
-        transaction_data = {
-            'description': request.form.get('description'),
-            'amount': request.form.get('amount'),
-            'category': request.form.get('category'),
-            'transaction_date': request.form.get('transaction_date'),
-            'transaction_type': INCOME,
-            'owner': user_id
-        }
-        db.insert('paypal', transaction_data)
+        transaction_data = Transaction(
+            description=request.form['description'],
+            amount=request.form['amount'],
+            category=request.form['category'],
+            transaction_date=request.form['transaction_date'],
+            transaction_type=INCOME,
+            owner=user_id
+        )
+        db_session.add(transaction_data)
+        db_session.commit()
         return redirect('/income')
-
-    income_data = db.select('paypal', {'owner': user_id, 'transaction_type': INCOME}, fetchall=True)
-    category_data = db.select('category', {'owner': user_id}, fetchall=True)
+    income_data = db_session.query(Transaction).filter_by(owner=user_id, transaction_type=INCOME).all()
+    category_data = db_session.query(Category).filter_by(owner=user_id).all()
     return render_template('income.html', paypal=income_data, category=category_data)
 
 
@@ -202,19 +154,21 @@ def get_income(income_id):
 def get_all_spend():
     user_id = session['user']['id']
     if request.method == 'POST':
-        transaction_data = {
-            'description': request.form['description'],
-            'amount': request.form['amount'],
-            'category': request.form['category'],
-            'transaction_date': request.form['transaction_date'],
-            'transaction_type': SPEND,
-            'owner': user_id
-        }
-        db.insert('paypal', transaction_data)
-        return redirect('/spend')
-    spend_data = db.select('paypal', {'owner': user_id, 'transaction_type': SPEND}, fetchall=True)
-    category_data = db.select('category', {'owner': user_id}, fetchall=True)
-    return render_template('spend.html', paypal=spend_data, category=category_data)
+        transaction_data = Transaction(
+            description=request.form['description'],
+            amount=request.form['amount'],
+            category=request.form['category'],
+            transaction_date=request.form['transaction_date'],
+            transaction_type=SPEND,
+            owner=user_id
+        )
+        db_session.add(transaction_data)
+        db_session.commit()
+        return redirect('/income')
+    spend_data = db_session.query(Transaction).filter_by(owner=user_id, transaction_type=SPEND).all()
+    category_data = db_session.query(Category).filter_by(owner=user_id).all()
+    return render_template('income.html', paypal=spend_data, category=category_data)
+
 
 
 @app.route('/spend/<int:spend_id>', methods=['GET', 'PATCH', 'DELETE'])
