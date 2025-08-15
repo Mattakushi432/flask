@@ -46,4 +46,4 @@ class Transaction(Base):
     owner = Column(Integer, ForeignKey('users.id'))
     amount = Column(Float, nullable=False)
 
-Base.metadata.create_all(engine)
+# Base.metadata.create_all(engine)
