@@ -11,8 +11,7 @@ class User(Base):
     surname = Column(String(50), nullable=False)
     password = Column(String(100))
     email = Column(String(100), unique=True)
-    city = Column(String(50), nullable=True)
-    country = Column(String(50), nullable=True)
+    date_birth = Column(String(50), unique=True)
 
     def set_password(self, password):
         self.password = generate_password_hash(password)
