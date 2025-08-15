@@ -37,7 +37,7 @@ class Transaction(Base):
 
     transaction_id = Column(Integer, primary_key=True)
     description = Column(Text)
-    category = Column(Integer, ForeignKey('categories.id', ondelete='CASCADE'))
+    category = Column(Integer, ForeignKey('category.id', ondelete='CASCADE'))
     transaction_date = Column(String(50), nullable=False)
     transaction_type = Column(Integer, nullable=False)
     owner = Column(Integer, ForeignKey('users.id'))
