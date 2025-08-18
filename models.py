@@ -13,8 +13,6 @@ class User(Base):
     email = Column(String(100), unique=True)
     data_birth = Column(String(50), nullable=False)
     country = Column(String(50), nullable=True)
-    city = Column(String(50), nullable=True)
-    nation = Column(String(50), nullable=True)
 
     def set_password(self, password):
         self.password = generate_password_hash(password)
@@ -47,4 +45,4 @@ class Transaction(Base):
     owner = Column(Integer, ForeignKey('users.id'))
     amount = Column(Float, nullable=False)
 
-# Base.metadata.create_all(engine)
+Base.metadata.create_all(engine)
