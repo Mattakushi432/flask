@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text, Float
+from sqlalchemy import Column, Integer, String, ForeignKey, Text, Float, Date
 from werkzeug.security import generate_password_hash, check_password_hash
 from sql_engine import Base, engine
 
@@ -7,12 +7,13 @@ class User(Base):
     __tablename__ = 'users'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(50), nullable=False)
-    surname = Column(String(50), nullable=False)
-    password = Column(String(100))
-    email = Column(String(100), unique=True)
-    data_birth = Column(String(50), nullable=False)
-    country = Column(String(50), nullable=True)
+    name = Column(String(80), nullable=False)
+    first_name = Column(String(80), nullable=False)
+    last_name = Column(String(80), nullable=False)
+    password = Column(String(128))
+    email = Column(String(120), unique=True)
+    date_of_birth = Column(Date)
+    country = Column(String(80))
 
     def set_password(self, password):
         self.password = generate_password_hash(password)
@@ -20,8 +21,12 @@ class User(Base):
     def check_password(self, password):
         return check_password_hash(self.password, password)
 
-    def __repr__(self):
-        return f'<User {self.name!r}'
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'email': self.email
+        }
 
 
 

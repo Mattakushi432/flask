@@ -64,8 +64,11 @@ def register_page():
         try:
             new_user = User(
                 name=request.form['name'],
-                surname=request.form['surname'],
+                first_name=request.form['first_name'],
+                last_name=request.form['last_name'],
                 email=request.form['email'],
+                date_of_birth=request.form['date_of_birth'],
+                country=request.form['country'],
             )
             new_user.set_password(request.form['password'])
             db_session.add(new_user)
