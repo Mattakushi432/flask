@@ -3,6 +3,7 @@ from functools import wraps
 import os
 import dotenv
 from sqlalchemy.exc import IntegrityError
+from datetime import datetime
 
 from sql_engine import Session
 from models import User, Category, Transaction
@@ -46,7 +47,7 @@ def login_page():
         password = request.form['password']
         user = db_session.query(User).filter_by(email=email).first()
         if user and user.check_password(password):
-            session['user'] = {'id': user.id, 'name': user.name, 'surname': user.surname, 'email': user.email}
+            session['user'] = {'id': user.id, 'name': user.name, 'first_name': user.first_name, 'email': user.email}
             return redirect('/income')
         return render_template('login.html', error='Invalid email or password')
     return render_template('login.html')
@@ -61,21 +62,27 @@ def logout():
 @app.route('/register', methods=['GET', 'POST'])
 def register_page():
     if request.method == 'POST':
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+        if password != confirm_password:
+            return render_template('register.html', error='Passwords do not match')
+
         try:
+            date_of_birth_str = request.form.get('date_of_birth')
+            date_of_birth_obj = datetime.strptime(date_of_birth_str, '%Y-%m-%d').date()
             new_user = User(
-                name=request.form['name'],
-                first_name=request.form['first_name'],
-                last_name=request.form['last_name'],
-                email=request.form['email'],
-                date_of_birth=request.form['date_of_birth'],
-                country=request.form['country'],
+                name=request.form.get('name'),
+                first_name=request.form.get('first_name'),
+                last_name=request.form.get('last_name'),
+                email=request.form.get('email'),
+                date_of_birth=date_of_birth_obj,
+                country=request.form.get('country'),
             )
-            new_user.set_password(request.form['password'])
+            new_user.set_password(password)
             db_session.add(new_user)
             db_session.commit()
             return redirect('/login')
         except IntegrityError:
-            db_session.rollback()
             return render_template('register.html', error='Email already exists')
     return render_template('register.html')
 
@@ -90,7 +97,7 @@ def category_page():
             new_category = Category(name=category_name, owner=user_id)
             db_session.add(new_category)
             db_session.commit()
-        return redirect('/income')
+        return redirect('/category')
     user_categories = db_session.query(Category).filter_by(owner=user_id).all()
     return render_template('category_list.html', categories=user_categories)
 
@@ -127,8 +134,8 @@ def get_all_income():
     if request.method == 'POST':
         transaction_data = Transaction(
             description=request.form['description'],
-            amount=request.form['amount'],
-            category=request.form['category'],
+            amount=float(request.form['amount']),
+            category=int(request.form['category']),
             transaction_date=request.form['transaction_date'],
             transaction_type=INCOME,
             owner=user_id
@@ -159,19 +166,18 @@ def get_all_spend():
     if request.method == 'POST':
         transaction_data = Transaction(
             description=request.form['description'],
-            amount=request.form['amount'],
-            category=request.form['category'],
+            amount=float(request.form['amount']),
+            category=int(request.form['category']),
             transaction_date=request.form['transaction_date'],
             transaction_type=SPEND,
             owner=user_id
         )
         db_session.add(transaction_data)
         db_session.commit()
-        return redirect('/income')
+        return redirect('/spend')
     spend_data = db_session.query(Transaction).filter_by(owner=user_id, transaction_type=SPEND).all()
     category_data = db_session.query(Category).filter_by(owner=user_id).all()
-    return render_template('income.html', paypal=spend_data, category=category_data)
-
+    return render_template('spend.html', paypal=spend_data, category=category_data)
 
 
 @app.route('/spend/<int:spend_id>', methods=['GET', 'PATCH', 'DELETE'])

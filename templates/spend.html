@@ -7,22 +7,37 @@
 </head>
 <body>
 
-<h1>Spend</h1>
+<h1>Add Spend</h1>
 
 <p>User Spend</p>
 
-<form action="/spend" method="post">
-  <label for="category">Choose a Category:</label>
-  <select name="category" id="category">
-      <option value="gifts">Gifts</option>
-      <option value="education">Education</option>
-      <option value="travel">Travel</option>
-      <option value="shopping">Shopping</option>
-      <option value="transportation">Transportation</option>
-      <option value="housing">Housing</option>
-  </select>
-  <br><br>
-  <input type="submit" value="Submit">
+<form action= {{ 'get_all_spend' }} method="post">
+<div>
+        <label for="description">Description:</label><br>
+        <input type="text" id="description" name="description" required>
+    </div>
+    <br>
+    <div>
+        <label for="amount">Amount:</label><br>
+        <input type="number" step="0.01" id="amount" name="amount" required>
+    </div>
+    <br>
+    <div>
+        <label for="transaction_date">Date:</label><br>
+        <input type="date" id="transaction_date" name="transaction_date" required>
+    </div>
+    <br>
+    <div>
+        <label for="category_id">Choose a Category:</label><br>
+        <select id="category_id" name="category_id" required>
+            <option value="">-- Select --</option>
+            {% for category in categories %}
+                <option value="{{ category.id }}">{{ category.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <br>
+    <button type="submit">Submit</button>
 </form>
 
 <p></p>
