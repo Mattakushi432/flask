@@ -9,9 +9,38 @@
 
 <h1>Add Spend</h1>
 
-<p>User Spend</p>
-
-<form action= {{ 'get_all_spend' }} method="post">
+<table border="1">
+    <thead>
+    <tr>
+        <th>Data</th>
+        <th>Description</th>
+        <th>Amount</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for item in paypal %}
+        <tr>
+            <td>{{ item.transaction_date }}</td>
+            <td>{{ item.description }}</td>
+            <td>{{ item.amount }}</td>
+            <td>
+                <a href="{{ url_for('edit_spend', spend_id=item.transaction_id) }}">Edit</a>
+                <form action="{{ url_for('delete_spend', spend_id=item.transaction_id) }}" method="post"
+                      style="display:inline; margin-left: 10px;">
+                    <button type="submit" onclick="return confirm('Are you sure?');">Deleted</button>
+                </form>
+            </td>
+        </tr>
+    {% else %}
+        <tr>
+            <td colspan="4">There are no records of spend.</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+<br>
+<form action="{{ url_for('get_all_spend') }}" method="post">
 <div>
         <label for="description">Description:</label><br>
         <input type="text" id="description" name="description" required>
@@ -31,8 +60,8 @@
         <label for="category_id">Choose a Category:</label><br>
         <select id="category_id" name="category_id" required>
             <option value="">-- Select --</option>
-            {% for category in categories %}
-                <option value="{{ category.id }}">{{ category.name }}</option>
+            {% for cat in category %}
+                <option value="{{ cat.id }}">{{ cat.name }}</option>
             {% endfor %}
         </select>
     </div>

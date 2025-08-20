@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
+        body { font-family: sans-serif; color: #333; }
+        .container { max-width: 960px; margin: 20px auto; padding: 0 15px; }
+        .summary-cards { display: flex; justify-content: space-around; gap: 20px; text-align: center; margin-bottom: 40px; }
+        .card { background: #f4f4f4; padding: 20px; border-radius: 8px; width: 30%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card h2 { margin-top: 0; font-size: 1.2em; color: #666; }
+        .card .amount { font-size: 2em; font-weight: bold; }
+        .income { color: #28a745; }
+        .spend { color: #dc3545; }
+        .balance { color: #007bff; }
+        .content-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 40px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: left; }
+        th { background-color: #f8f9fa; }
+        nav { margin-bottom: 20px; }
+        nav a { margin-right: 15px; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Dashboard</h1>
+        <nav>
+            <a href="{{ url_for('get_all_income') }}">Income</a>
+            <a href="{{ url_for('get_all_spend') }}">Expenses</a>
+            <a href="{{ url_for('category_page') }}">Category</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </nav>
+           <div class="search-form" style="margin-top: 20px;">
+        <form action="{{ url_for('get_user') }}" method="get">
+            <label for="start_date">From:</label>
+            <input type="date" name="start_date" id="start_date">
+            <label for="end_date">To:</label>
+            <input type="date" name="end_date" id="end_date">
+            <button type="submit">Filter</button>
+        </form>
+    </div>
+    </header>
+
+    <div class="summary-cards">
+        <div class="card">
+            <h2>Total income</h2>
+            <p class="amount income">+ {{ total_income|round(2) }}</p>
+        </div>
+        <div class="card">
+            <h2>Total spend</h2>
+            <p class="amount spend">- {{ total_spend|round(2) }}</p>
+        </div>
+        <div class="card">
+            <h2>Balance</h2>
+            <p class="amount balance">{{ balance|round(2) }}</p>
+        </div>
+    </div>
+
+
+
+    <div class="content-grid">
+        <div class="categories">
+            <h2>Expenses by category</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category, total in spend_by_category %}
+                    <tr>
+                        <td>{{ category }}</td>
+                        <td class="spend">{{ total|round(2) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="2">No expenses yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="recent-transactions">
+            <h2>Latest transactions</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Description</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trx in recent_transactions %}
+                    <tr>
+                        <td>{{ trx.transaction_date }}</td>
+                        <td>{{ trx.description }}</td>
+                        {% if trx.transaction_type == 1 %}
+                            <td class="income">+ {{ trx.amount|round(2) }}</td>
+                        {% else %}
+                            <td class="spend">- {{ trx.amount|round(2) }}</td>
+                        {% endif %}
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3">No expenses yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
